@@ -1,0 +1,14 @@
+[default.general]
+chip = "nRF52840_xxAA"
+
+[default.rtt]
+enabled = true
+# Show defmt logs by enabling RTT
+up_mode = "NoBlockSkip"
+# Use channel 0 for defmt output
+channels = [
+    { up = 0, down = 0, name = "defmt", format = "Defmt" }
+]
+
+[default.gdb]
+enabled = false

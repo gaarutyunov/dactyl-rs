@@ -1,0 +1,60 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cargo",
+            "command": "build",
+            "args": [
+                "--target",
+                "thumbv7em-none-eabihf"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "cargo build",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "detail": "Build the project for the embedded target",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "options": {
+                "env": {
+                    "DEFMT_LOG": "debug",
+                    "PATH": "/Users/garutyunov/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+                }
+            }
+        },
+        {
+            "type": "shell",
+            "command": "probe-rs",
+            "args": [
+                "run",
+                "--chip",
+                "nRF52840_xxAA",
+                "target/thumbv7em-none-eabihf/debug/dactyl-rs"
+            ],
+            "group": "test",
+            "label": "probe-rs run with RTT",
+            "detail": "Flash and run with RTT output (defmt logs)",
+            "dependsOn": "cargo build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "isBackground": false,
+            "problemMatcher": []
+        }
+    ]
+}
