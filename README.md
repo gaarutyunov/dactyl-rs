@@ -5,6 +5,7 @@ A Rust firmware implementation for the Dactyl split keyboard using the nRF52840 
 ## Overview
 
 This project provides firmware for a wireless split keyboard based on the Dactyl design. The firmware is built with Rust using Embassy async framework and targets the nRF52840 SoC for Bluetooth Low Energy connectivity.
+[nrfMicro](https://github.com/joric/nrfmicro/wiki/Pinout) is used, for other MCUs, the pins have to be changed.
 
 ### Features
 
@@ -66,7 +67,7 @@ This will generate:
    cargo install probe-rs --features cli
    ```
 
-3. **Hardware**: Debug probe (e.g., J-Link, ST-Link) for development and debugging
+3. **Hardware**: Debug probe (e.g., Raspberry Pi Debug Probe) for development and debugging
 
 ### Project Structure
 
