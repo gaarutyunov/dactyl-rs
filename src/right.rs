@@ -1,29 +1,22 @@
 #![no_std]
 #![no_main]
 
-mod keycodes;
-mod layout;
-mod matrix;
-mod usb;
+use dactyl_rs::usb::{UsbHandler, UsbKeyboard, UsbRequestHandler};
+use dactyl_rs::matrix::Matrix;
+use dactyl_rs::layout::get_right_layout as get_default_layout;
+use dactyl_rs::keycodes::KeyCode;
 
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
 use embassy_futures::{join::{join4}, select::{select, Either}};
-use embassy_nrf::{bind_interrupts, peripherals, usb as nrf_usb};
+use embassy_nrf::{bind_interrupts, pac, peripherals, usb as nrf_usb};
 use embassy_nrf::gpio::{Output, Input, Level, Pull, OutputDrive};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal, channel::Channel};
-use embassy_usb::{class::hid::{ReportId, RequestHandler}, control::OutResponse, Handler};
-use embassy_time;
 use usbd_hid::descriptor::SerializedDescriptor;
 use {defmt_rtt as _, panic_probe as _};
 
 use core::sync::atomic::{AtomicBool, Ordering};
-use embassy_nrf::pac;
 
-use crate::layout::get_default_layout;
-use crate::matrix::Matrix;
-use crate::usb::UsbKeyboard;
-use crate::keycodes::KeyCode;
 
 bind_interrupts!(struct Irqs {
     USBD => nrf_usb::InterruptHandler<peripherals::USBD>;
@@ -32,6 +25,7 @@ bind_interrupts!(struct Irqs {
 
 static SUSPENDED: AtomicBool = AtomicBool::new(false);
 static USB_CONFIGURED: AtomicBool = AtomicBool::new(false);
+static KEY_CHANNEL: Channel<CriticalSectionRawMutex, KeyCode, 16> = Channel::new();
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -51,8 +45,6 @@ async fn main(_spawner: Spawner) {
     let driver = embassy_nrf::usb::Driver::new(p.USBD, Irqs, embassy_nrf::usb::vbus_detect::HardwareVbusDetect::new(Irqs));
     
     // Add a small delay and check USB status
-    embassy_time::Timer::after_millis(100).await;
-    info!("USB driver initialized, checking for VBUS detection...");
     let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
     config.manufacturer = Some("German Arutyunov");
     config.product = Some("Dactyal Manuform");
@@ -65,8 +57,8 @@ async fn main(_spawner: Spawner) {
     let mut bos_descriptor = [0; 256];
     let mut msos_descriptor = [0; 256];
     let mut control_buf = [0; 64];
-    let mut request_handler = MyRequestHandler {};
-    let mut device_handler = MyDeviceHandler::new();
+    let mut request_handler = UsbRequestHandler {};
+    let mut device_handler = UsbHandler::new(&USB_CONFIGURED, &SUSPENDED);
 
     let mut state = embassy_usb::class::hid::State::new();
 
@@ -96,7 +88,6 @@ async fn main(_spawner: Spawner) {
     let mut keyboard = UsbKeyboard::new(writer, &USB_CONFIGURED);
 
     // Create a channel for sending key events from matrix scanner to USB task
-    static KEY_CHANNEL: Channel<CriticalSectionRawMutex, KeyCode, 16> = Channel::new();
     let key_sender = KEY_CHANNEL.sender();
     let key_receiver = KEY_CHANNEL.receiver();
 
@@ -146,7 +137,7 @@ async fn main(_spawner: Spawner) {
     let in_fut = async {
         loop {
             matrix.scan_keys(&layout, |keycode| {
-                if SUSPENDED.load(Ordering::Acquire) {
+                if SUSPENDED.load(Ordering::Relaxed) {
                     info!("Triggering remote wakeup");
                     remote_wakeup.signal(());
                 } else {
@@ -173,80 +164,4 @@ async fn main(_spawner: Spawner) {
     };
 
     join4(usb_fut, in_fut, keyboard_fut, out_fut).await;
-}
-
-struct MyRequestHandler {}
-
-impl RequestHandler for MyRequestHandler {
-    fn get_report(&mut self, id: ReportId, _buf: &mut [u8]) -> Option<usize> {
-        info!("Get report for {:?}", id);
-        None
-    }
-
-    fn set_report(&mut self, id: ReportId, data: &[u8]) -> OutResponse {
-        info!("Set report for {:?}: {=[u8]}", id, data);
-        OutResponse::Accepted
-    }
-
-    fn set_idle_ms(&mut self, id: Option<ReportId>, dur: u32) {
-        info!("Set idle rate for {:?} to {:?}", id, dur);
-    }
-
-    fn get_idle_ms(&mut self, id: Option<ReportId>) -> Option<u32> {
-        info!("Get idle rate for {:?}", id);
-        None
-    }
-}
-
-struct MyDeviceHandler;
-
-impl MyDeviceHandler {
-    fn new() -> Self {
-        MyDeviceHandler
-    }
-}
-
-impl Handler for MyDeviceHandler {
-    fn enabled(&mut self, enabled: bool) {
-        USB_CONFIGURED.store(false, Ordering::Relaxed);
-        SUSPENDED.store(false, Ordering::Release);
-        if enabled {
-            info!("Device enabled");
-        } else {
-            info!("Device disabled");
-        }
-    }
-
-    fn reset(&mut self) {
-        USB_CONFIGURED.store(false, Ordering::Relaxed);
-        info!("Bus reset, the Vbus current limit is 100mA");
-    }
-
-    fn addressed(&mut self, addr: u8) {
-        USB_CONFIGURED.store(false, Ordering::Relaxed);
-        info!("USB address set to: {}", addr);
-    }
-
-    fn configured(&mut self, configured: bool) {
-        USB_CONFIGURED.store(configured, Ordering::Relaxed);
-        if configured {
-            info!("Device configured, it may now draw up to the configured current limit from Vbus.")
-        } else {
-            info!("Device is no longer configured, the Vbus current limit is 100mA.");
-        }
-    }
-
-    fn suspended(&mut self, suspended: bool) {
-        if suspended {
-            info!("Device suspended, the Vbus current limit is 500µA (or 2.5mA for high-power devices with remote wakeup enabled).");
-            SUSPENDED.store(true, Ordering::Release);
-        } else {
-            SUSPENDED.store(false, Ordering::Release);
-            if USB_CONFIGURED.load(Ordering::Relaxed) {
-                info!("Device resumed, it may now draw up to the configured current limit from Vbus");
-            } else {
-                info!("Device resumed, the Vbus current limit is 100mA");
-            }
-        }
-    }
 }

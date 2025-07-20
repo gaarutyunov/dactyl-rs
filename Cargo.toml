@@ -2,6 +2,9 @@
 name = "dactyl-rs"
 version = "0.1.0"
 edition = "2024"
+authors = ["German Arutyunov <germanarutyunov@gmail.com>"]
+description = "Dactyl keyboard firmware for nRF52840"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 nrf-sdc = { version = "0.1.0", default-features = false, features = [
@@ -67,6 +70,14 @@ bt-hci = { git = "https://github.com/embassy-rs/bt-hci", rev = "50c443e088ab9c40
 xz2 = "0.1.7"
 json = "0.12"
 const-gen = "1.6"
+
+[[bin]]
+name = "left"
+path = "src/left.rs"
+
+[[bin]]
+name = "right"
+path = "src/right.rs"
 
 [profile.dev]
 codegen-units = 1      # better optimizations

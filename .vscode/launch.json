@@ -7,7 +7,7 @@
         {
             "type": "probe-rs-debug",
             "request": "launch",
-            "name": "probe-rs Test",
+            "name": "probe-rs left",
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "cargo build",
             "connectUnderReset": false,
@@ -19,7 +19,36 @@
             "coreConfigs": [
                 {
                     "coreIndex": 0,
-                    "programBinary": "./target/thumbv7em-none-eabihf/debug/${workspaceFolderBasename}",
+                    "programBinary": "./target/thumbv7em-none-eabihf/debug/left",
+                    "rttEnabled": true,
+                    "rttChannelFormats": [
+                        {
+                            "channelNumber": 0,
+                            "dataFormat": "Defmt",
+                            "showTimestamps": true,
+                            "showLocation": true
+                        }
+                    ]
+                }
+            ],
+            "consoleLogLevel": "Info"
+        },
+        {
+            "type": "probe-rs-debug",
+            "request": "launch",
+            "name": "probe-rs right",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "cargo build",
+            "connectUnderReset": false,
+            "chip": "nRF52840_xxAA",
+            "flashingConfig": {
+                "flashingEnabled": true,
+                "haltAfterReset": true
+            },
+            "coreConfigs": [
+                {
+                    "coreIndex": 0,
+                    "programBinary": "./target/thumbv7em-none-eabihf/debug/right",
                     "rttEnabled": true,
                     "rttChannelFormats": [
                         {

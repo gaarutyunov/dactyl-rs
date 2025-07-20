@@ -1,5 +1,4 @@
 use embassy_nrf::gpio::{Input, Output};
-use embassy_nrf::pac::common::R;
 use embassy_time::Timer;
 use defmt::info;
 use crate::keycodes::KeyCode;
