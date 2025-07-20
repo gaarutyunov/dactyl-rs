@@ -33,7 +33,7 @@ where_single_line = false
 force_explicit_abi = true
 
 # Arrays and structs
-array_width = 60
+array_width = 100
 struct_field_align_threshold = 0
 
 # Strings and literals

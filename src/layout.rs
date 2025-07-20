@@ -4,120 +4,37 @@ use crate::keycodes::{Extra, KeyCode};
 
 pub type Layout<const N_COLS: usize, const N_ROWS: usize> = [[KeyCode; N_COLS]; N_ROWS];
 
+// Macros for shorter keycode definitions
+macro_rules! k {
+    ($key:ident) => {
+        KeyCode::Base(KeyboardUsage::$key)
+    };
+}
+
+macro_rules! na {
+    () => {
+        KeyCode::Extra(Extra::NA)
+    };
+}
+
 pub fn get_left_layout() -> Layout<7, 6> {
     [
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Base(KeyboardUsage::KeyboardQq),
-            KeyCode::Base(KeyboardUsage::KeyboardWw),
-            KeyCode::Base(KeyboardUsage::KeyboardEe),
-            KeyCode::Base(KeyboardUsage::KeyboardRr),
-            KeyCode::Base(KeyboardUsage::KeyboardTt),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Base(KeyboardUsage::KeyboardAa),
-            KeyCode::Base(KeyboardUsage::KeyboardSs),
-            KeyCode::Base(KeyboardUsage::KeyboardDd),
-            KeyCode::Base(KeyboardUsage::KeyboardFf),
-            KeyCode::Base(KeyboardUsage::KeyboardGg),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Base(KeyboardUsage::KeyboardZz),
-            KeyCode::Base(KeyboardUsage::KeyboardXx),
-            KeyCode::Base(KeyboardUsage::KeyboardCc),
-            KeyCode::Base(KeyboardUsage::KeyboardVv),
-            KeyCode::Base(KeyboardUsage::KeyboardBb),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
+        [na!(), na!(), na!(), na!(), na!(), na!(), na!()],
+        [na!(), k!(KeyboardQq), k!(KeyboardWw), k!(KeyboardEe), k!(KeyboardRr), k!(KeyboardTt), na!()],
+        [na!(), k!(KeyboardAa), k!(KeyboardSs), k!(KeyboardDd), k!(KeyboardFf), k!(KeyboardGg), na!()],
+        [na!(), k!(KeyboardZz), k!(KeyboardXx), k!(KeyboardCc), k!(KeyboardVv), k!(KeyboardBb), na!()],
+        [na!(), na!(), na!(), na!(), na!(), na!(), na!()],
+        [na!(), na!(), na!(), na!(), na!(), na!(), na!()],
     ]
 }
 
 pub fn get_right_layout() -> Layout<7, 6> {
     [
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Base(KeyboardUsage::KeyboardYy),
-            KeyCode::Base(KeyboardUsage::KeyboardUu),
-            KeyCode::Base(KeyboardUsage::KeyboardIi),
-            KeyCode::Base(KeyboardUsage::KeyboardOo),
-            KeyCode::Base(KeyboardUsage::KeyboardPp),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Base(KeyboardUsage::KeyboardHh),
-            KeyCode::Base(KeyboardUsage::KeyboardJj),
-            KeyCode::Base(KeyboardUsage::KeyboardKk),
-            KeyCode::Base(KeyboardUsage::KeyboardLl),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Base(KeyboardUsage::KeyboardNn),
-            KeyCode::Base(KeyboardUsage::KeyboardMm),
-            KeyCode::Base(KeyboardUsage::KeyboardCommaLess),
-            KeyCode::Base(KeyboardUsage::KeyboardPeriodGreater),
-            KeyCode::Base(KeyboardUsage::KeyboardSlashQuestion),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
-        [
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-            KeyCode::Extra(Extra::NA),
-        ],
+        [na!(), na!(), na!(), na!(), na!(), na!(), na!()],
+        [na!(), k!(KeyboardYy), k!(KeyboardUu), k!(KeyboardIi), k!(KeyboardOo), k!(KeyboardPp), na!()],
+        [na!(), k!(KeyboardHh), k!(KeyboardJj), k!(KeyboardKk), k!(KeyboardLl), na!(), na!()],
+        [na!(), k!(KeyboardNn), k!(KeyboardMm), k!(KeyboardCommaLess), k!(KeyboardPeriodGreater), k!(KeyboardSlashQuestion), na!()],
+        [na!(), na!(), na!(), na!(), na!(), na!(), na!()],
+        [na!(), na!(), na!(), na!(), na!(), na!(), na!()],
     ]
 }
