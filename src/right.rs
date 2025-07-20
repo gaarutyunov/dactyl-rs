@@ -1,22 +1,31 @@
 #![no_std]
 #![no_main]
 
-use dactyl_rs::usb::{UsbHandler, UsbKeyboard, UsbRequestHandler};
-use dactyl_rs::matrix::Matrix;
-use dactyl_rs::layout::get_right_layout as get_default_layout;
-use dactyl_rs::keycodes::KeyCode;
-
-use defmt::{info, unwrap};
-use embassy_executor::Spawner;
-use embassy_futures::{join::{join4}, select::{select, Either}};
-use embassy_nrf::{bind_interrupts, pac, peripherals, usb as nrf_usb};
-use embassy_nrf::gpio::{Output, Input, Level, Pull, OutputDrive};
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal, channel::Channel};
-use usbd_hid::descriptor::SerializedDescriptor;
-use {defmt_rtt as _, panic_probe as _};
-
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use dactyl_rs::{
+    keycodes::KeyCode,
+    layout::get_right_layout as get_default_layout,
+    matrix::Matrix,
+    usb::{UsbHandler, UsbKeyboard, UsbRequestHandler},
+};
+use defmt::{info, unwrap};
+use defmt_rtt as _;
+use embassy_executor::Spawner;
+use embassy_futures::{
+    join::join4,
+    select::{Either, select},
+};
+use embassy_nrf::{
+    bind_interrupts,
+    gpio::{Input, Level, Output, OutputDrive, Pull},
+    pac, peripherals, usb as nrf_usb,
+};
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal,
+};
+use panic_probe as _;
+use usbd_hid::descriptor::SerializedDescriptor;
 
 bind_interrupts!(struct Irqs {
     USBD => nrf_usb::InterruptHandler<peripherals::USBD>;
@@ -30,7 +39,7 @@ static KEY_CHANNEL: Channel<CriticalSectionRawMutex, KeyCode, 16> = Channel::new
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_nrf::init(Default::default());
-    
+
     // Add early logging to test defmt
     defmt::info!("=== Dactyl keyboard firmware starting ===");
     // Enable the external high-frequency oscillator (hfosc)
@@ -42,8 +51,12 @@ async fn main(_spawner: Spawner) {
     info!("External HFOSC enabled successfully");
 
     // Initialize USB - try software VBUS detection to bypass hardware issues
-    let driver = embassy_nrf::usb::Driver::new(p.USBD, Irqs, embassy_nrf::usb::vbus_detect::HardwareVbusDetect::new(Irqs));
-    
+    let driver = embassy_nrf::usb::Driver::new(
+        p.USBD,
+        Irqs,
+        embassy_nrf::usb::vbus_detect::HardwareVbusDetect::new(Irqs),
+    );
+
     // Add a small delay and check USB status
     let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
     config.manufacturer = Some("German Arutyunov");
@@ -80,10 +93,14 @@ async fn main(_spawner: Spawner) {
         poll_ms: 60,
         max_packet_size: 64,
     };
-    let hid = embassy_usb::class::hid::HidReaderWriter::<_, 1, 8>::new(&mut builder, &mut state, hid_config);
+    let hid = embassy_usb::class::hid::HidReaderWriter::<_, 1, 8>::new(
+        &mut builder,
+        &mut state,
+        hid_config,
+    );
     let mut usb_device = builder.build();
     let (reader, writer) = hid.split();
-    
+
     // Initialize keyboard
     let mut keyboard = UsbKeyboard::new(writer, &USB_CONFIGURED);
 
@@ -110,7 +127,7 @@ async fn main(_spawner: Spawner) {
         Input::new(p.P0_10, Pull::Down), // row 4
         Input::new(p.P1_06, Pull::Down), // row 4
     ];
-    
+
     let mut matrix = Matrix::new(cols, rows);
     let layout = get_default_layout();
 
@@ -125,29 +142,31 @@ async fn main(_spawner: Spawner) {
             match select(usb_device.wait_resume(), remote_wakeup.wait()).await {
                 Either::First(_) => {
                     info!("USB device resumed");
-                },
+                }
                 Either::Second(_) => {
                     info!("Remote wakeup triggered");
                     unwrap!(usb_device.remote_wakeup().await)
-                },
+                }
             }
         }
     };
 
     let in_fut = async {
         loop {
-            matrix.scan_keys(&layout, |keycode| {
-                if SUSPENDED.load(Ordering::Relaxed) {
-                    info!("Triggering remote wakeup");
-                    remote_wakeup.signal(());
-                } else {
-                    // Send keycode through channel to USB task
-                    info!("Key pressed: {:?}", keycode.to_usage_code());
-                    if key_sender.try_send(keycode).is_err() {
-                        info!("Key channel full, dropping keycode");
+            matrix
+                .scan_keys(&layout, |keycode| {
+                    if SUSPENDED.load(Ordering::Relaxed) {
+                        info!("Triggering remote wakeup");
+                        remote_wakeup.signal(());
+                    } else {
+                        // Send keycode through channel to USB task
+                        info!("Key pressed: {:?}", keycode.to_usage_code());
+                        if key_sender.try_send(keycode).is_err() {
+                            info!("Key channel full, dropping keycode");
+                        }
                     }
-                }
-            }).await;
+                })
+                .await;
         }
     };
 

@@ -1,0 +1,63 @@
+# Rust formatting configuration for dactyl-rs
+
+# Edition
+edition = "2024"
+
+# Line width
+max_width = 100
+
+# Indentation
+hard_tabs = false
+tab_spaces = 4
+
+# Imports
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+reorder_modules = true
+
+# Comments and documentation
+format_code_in_doc_comments = true
+normalize_comments = true
+normalize_doc_attributes = true
+wrap_comments = true
+comment_width = 80
+
+# Control flow
+control_brace_style = "AlwaysSameLine"
+brace_style = "SameLineWhere"
+
+# Functions
+fn_single_line = false
+where_single_line = false
+force_explicit_abi = true
+
+# Arrays and structs
+array_width = 60
+struct_field_align_threshold = 0
+
+# Strings and literals
+format_strings = true
+
+# Trailing elements
+trailing_comma = "Vertical"
+trailing_semicolon = true
+
+# Whitespace
+use_small_heuristics = "Default"
+binop_separator = "Front"
+
+# Misc
+newline_style = "Unix"
+remove_nested_parens = true
+use_field_init_shorthand = true
+
+# Error on line overflow
+error_on_line_overflow = false
+error_on_unformatted = false
+
+# Unstable features (require nightly)
+# Uncomment these if using nightly Rust
+# format_macro_matchers = true
+# format_macro_bodies = true
+# hex_literal_case = "Preserve"

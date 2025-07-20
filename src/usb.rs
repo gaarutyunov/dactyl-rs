@@ -1,9 +1,15 @@
-use embassy_usb::{class::hid::{HidWriter, ReportId, RequestHandler}, control::OutResponse, Handler};
-use embassy_time;
-use usbd_hid::descriptor::KeyboardReport;
-use defmt::{info, warn};
-use crate::keycodes::KeyCode;
 use core::sync::atomic::{AtomicBool, Ordering};
+
+use defmt::{info, warn};
+use embassy_time;
+use embassy_usb::{
+    Handler,
+    class::hid::{HidWriter, ReportId, RequestHandler},
+    control::OutResponse,
+};
+use usbd_hid::descriptor::KeyboardReport;
+
+use crate::keycodes::KeyCode;
 
 pub struct UsbKeyboard<'d, D: embassy_usb::driver::Driver<'d>, const N: usize> {
     writer: HidWriter<'d, D, N>,
@@ -23,37 +29,36 @@ impl<'d, D: embassy_usb::driver::Driver<'d>, const N: usize> UsbKeyboard<'d, D, 
         }
 
         let (modifier_byte, normal_key) = keycode.to_hid_values();
-        
-        let report =    KeyboardReport {
+
+        let report = KeyboardReport {
             keycodes: [normal_key, 0, 0, 0, 0, 0],
             leds: 0,
             modifier: modifier_byte,
             reserved: 0,
         };
-        
+
         match self.writer.write_serialize(&report).await {
             Ok(()) => {}
             Err(e) => warn!("Failed to send report: {:?}", e),
         };
-        
+
         // Send a key release report after the key press
         // This ensures the key doesn't get "stuck"
         embassy_time::Timer::after_millis(10).await;
-        
+
         let release_report = KeyboardReport {
             keycodes: [0, 0, 0, 0, 0, 0],
             leds: 0,
             modifier: 0,
             reserved: 0,
         };
-        
+
         match self.writer.write_serialize(&release_report).await {
             Ok(()) => {}
             Err(e) => warn!("Failed to send release report: {:?}", e),
         };
     }
 }
-
 
 pub struct UsbRequestHandler {}
 
@@ -83,9 +88,12 @@ pub struct UsbHandler<'d> {
     suspended: &'d AtomicBool,
 }
 
-impl <'d>UsbHandler<'d> {
+impl<'d> UsbHandler<'d> {
     pub fn new(configured: &'d AtomicBool, suspended: &'d AtomicBool) -> Self {
-        Self { configured, suspended }
+        Self {
+            configured,
+            suspended,
+        }
     }
 
     pub fn is_suspended(&self) -> bool {
@@ -93,7 +101,7 @@ impl <'d>UsbHandler<'d> {
     }
 }
 
-impl <'d>Handler for UsbHandler<'d> {
+impl<'d> Handler for UsbHandler<'d> {
     fn enabled(&mut self, enabled: bool) {
         self.configured.store(false, Ordering::Relaxed);
         self.suspended.store(false, Ordering::Release);
@@ -117,7 +125,9 @@ impl <'d>Handler for UsbHandler<'d> {
     fn configured(&mut self, configured: bool) {
         self.configured.store(configured, Ordering::Relaxed);
         if configured {
-            info!("Device configured, it may now draw up to the configured current limit from Vbus.")
+            info!(
+                "Device configured, it may now draw up to the configured current limit from Vbus."
+            )
         } else {
             info!("Device is no longer configured, the Vbus current limit is 100mA.");
         }
@@ -125,12 +135,17 @@ impl <'d>Handler for UsbHandler<'d> {
 
     fn suspended(&mut self, suspended: bool) {
         if suspended {
-            info!("Device suspended, the Vbus current limit is 500µA (or 2.5mA for high-power devices with remote wakeup enabled).");
+            info!(
+                "Device suspended, the Vbus current limit is 500µA (or 2.5mA for high-power \
+                 devices with remote wakeup enabled)."
+            );
             self.suspended.store(true, Ordering::Release);
         } else {
             self.suspended.store(false, Ordering::Release);
             if self.configured.load(Ordering::Relaxed) {
-                info!("Device resumed, it may now draw up to the configured current limit from Vbus");
+                info!(
+                    "Device resumed, it may now draw up to the configured current limit from Vbus"
+                );
             } else {
                 info!("Device resumed, the Vbus current limit is 100mA");
             }
