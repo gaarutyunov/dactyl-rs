@@ -1,52 +1,52 @@
 # Dactyl-RS
 
-A Rust firmware implementation for the Dactyl split keyboard using the nRF52840 microcontroller.
+A simple blinky example for the nRF52840 microcontroller using the Embassy async framework.
 
 ## Overview
 
-This project provides firmware for a wireless split keyboard based on the Dactyl design. The firmware is built with Rust using Embassy async framework and targets the nRF52840 SoC for Bluetooth Low Energy connectivity.
-[nrfMicro](https://github.com/joric/nrfmicro/wiki/Pinout) is used, for other MCUs, the pins have to be changed.
+This project demonstrates a basic LED blinking example on the nRF52840 SoC using Rust and the Embassy async framework. The example is based on the [Embassy nRF52840 blinky example](https://github.com/embassy-rs/embassy/blob/main/examples/nrf52840/src/bin/blinky.rs).
+
+The LED on pin P1_10 (see [Pinout](https://github.com/joric/nrfmicro/wiki/Pinout)) blinks every 300 milliseconds, providing a simple "Hello World" equivalent for embedded Rust development.
 
 ### Features
 
-- **Split Design**: Separate firmware for left and right keyboard halves
-- **Wireless**: Bluetooth Low Energy connectivity via nRF52840
+- **Simple LED Control**: Blinks an LED connected to pin P1_10
 - **Async**: Built with Embassy async framework for efficient power management
-- **USB Support**: USB HID when connected via cable
 - **Real-time Logging**: defmt-based logging via RTT for debugging
+- **Embedded Rust**: Demonstrates `#![no_std]` embedded development
 
 ### Hardware Support
 
 - **Target**: nRF52840 microcontroller
 - **Architecture**: ARM Cortex-M4F (thumbv7em-none-eabihf)
-- **Connectivity**: Bluetooth LE, USB
+- **LED**: Connected to pin P1_10
 - **Debug Interface**: SWD with RTT logging
 
 ## Quick Start
 
 ### Building the Firmware
 
-The project uses `cargo-make` for build automation. Install it first:
+The project uses standard Cargo for building. Build the firmware with:
 
 ```bash
-cargo install cargo-make
+cargo build --target thumbv7em-none-eabihf
 ```
 
-Build both firmware binaries and generate UF2 files for flashing:
+### Running the Example
+
+You can run the blinky example directly using probe-rs:
 
 ```bash
-cargo make uf2
+probe-rs run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/dactyl-rs
 ```
 
-This will generate:
-- `left.uf2` - Firmware for the left keyboard half
-- `right.uf2` - Firmware for the right keyboard half
+Alternatively, use the VS Code task by pressing **F5** or **Ctrl+Shift+P** → "Tasks: Run Task" → "probe-rs run main".
 
-### Flashing
+### Expected Behavior
 
-1. Put your keyboard half into bootloader mode
-2. Copy the corresponding UF2 file to the USB drive that appears
-3. The firmware will be automatically flashed and the keyboard will restart
+When the firmware is running, you should see:
+1. The LED on pin P1_10 blinking every 300ms
+2. Debug output via RTT showing the application start
 
 ## Development
 
@@ -60,38 +60,30 @@ This will generate:
 
 2. **Development Tools**:
    ```bash
-   cargo install cargo-make
    cargo install flip-link
    cargo install cargo-binutils
-   cargo install cargo-hex-to-uf2
    cargo install probe-rs --features cli
    ```
 
-3. **Hardware**: Debug probe (e.g., Raspberry Pi Debug Probe) for development and debugging
+3. **Hardware**: 
+   - nRF52840 development board (or compatible)
+   - LED connected to pin P1_10 (or use onboard LED if available)
+   - Debug probe (e.g., Raspberry Pi Debug Probe) for development and debugging
 
 ### Project Structure
 
+The project is a simple single-binary embedded application:
+
 ```
 src/
-├── left.rs          # Left keyboard half firmware entry point
-├── right.rs         # Right keyboard half firmware entry point
-├── lib.rs           # Shared library code
-├── matrix.rs        # Key matrix scanning
-├── layout.rs        # Key layout and mapping
-├── keycodes.rs      # HID keycodes
-└── usb.rs           # USB HID implementation
+└── main.rs          # Main blinky application
 ```
 
-### Building Individual Halves
+### Building
 
-Build just the left half:
+Build the project:
 ```bash
-cargo build --bin left --target thumbv7em-none-eabihf
-```
-
-Build just the right half:
-```bash
-cargo build --bin right --target thumbv7em-none-eabihf
+cargo build --target thumbv7em-none-eabihf
 ```
 
 ### Debugging
@@ -111,32 +103,24 @@ This project is configured for comprehensive debugging with defmt/RTT logging vi
 
 **Option 2: Run Tasks**
 1. **Ctrl+Shift+P** → "Tasks: Run Task"
-2. Select either:
-   - **"probe-rs run left"** - Flash and run left half firmware
-   - **"probe-rs run right"** - Flash and run right half firmware
+2. Select **"probe-rs run main"** - Flash and run the blinky firmware
 
 #### Command Line Debugging
 
-Flash and debug the left half:
+Flash and debug the blinky example:
 ```bash
-probe-rs run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/left
-```
-
-Flash and debug the right half:
-```bash
-probe-rs run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/right
+probe-rs run --chip nRF52840_xxAA target/thumbv7em-none-eabihf/debug/dactyl-rs
 ```
 
 #### Expected Debug Output
 
 When running, you should see defmt logs like:
 ```
-0.000000 [INFO ] === Dactyl keyboard firmware starting === (left/src/left.rs:37)
-0.000000 [INFO ] Defmt logging system initialized (left/src/left.rs:38)
-0.000000 [INFO ] Left keyboard half starting... (left/src/left.rs:40)
-0.000000 [INFO ] Enabling ext hfosc... (left/src/left.rs:45)
-0.000427 [INFO ] External HFOSC enabled successfully (left/src/left.rs:48)
-0.123456 [INFO ] Key pressed at (2, 3): 65 (dactyl_rs/src/matrix.rs:42)
+0.000000 [INFO ] Blinky example starting...
+0.000000 [INFO ] LED initialized on pin P1_10
+0.300000 [DEBUG] LED ON
+0.600000 [DEBUG] LED OFF
+0.900000 [DEBUG] LED ON
 ```
 
 #### Troubleshooting
@@ -159,23 +143,30 @@ When running, you should see defmt logs like:
 ### Configuration Files
 
 - **`.vscode/launch.json`**: VS Code debug configuration with RTT support
-- **`.vscode/tasks.json`**: Build and run tasks for both halves
+- **`.vscode/tasks.json`**: Build and run tasks
 - **`Probe.toml`**: probe-rs RTT and debugging configuration
 - **`.cargo/config.toml`**: Cargo environment variables and target settings
-- **`Makefile.toml`**: cargo-make build automation tasks
 
 ### Contributing
 
 1. Follow Rust formatting: `cargo fmt`
 2. Check for issues: `cargo clippy`
-3. Test both firmware halves
+3. Test the firmware on hardware
 4. Update documentation for any API changes
+
+## Hardware Setup
+
+This example expects an LED connected to pin P1_10 of the nRFMicro. If your board uses a different pin, modify the pin assignment in `src/main.rs`:
+
+```rust
+let mut led = Output::new(p.PX_XX, Level::Low, OutputDrive::Standard); // Change PX_XX to your LED pin
+```
 
 ### Continuous Integration
 
 The project includes GitHub Actions workflow that:
-- Builds firmware for both keyboard halves
-- Generates UF2 files for easy flashing
+- Builds the blinky firmware
+- Runs code quality checks
 - Provides downloadable artifacts for releases
 
 ## License

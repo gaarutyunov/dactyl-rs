@@ -27,8 +27,7 @@
             },
             "options": {
                 "env": {
-                    "DEFMT_LOG": "debug",
-                    "PATH": "/Users/garutyunov/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+                    "DEFMT_LOG": "debug"
                 }
             }
         },
@@ -39,33 +38,10 @@
                 "run",
                 "--chip",
                 "nRF52840_xxAA",
-                "target/thumbv7em-none-eabihf/debug/left"
+                "target/thumbv7em-none-eabihf/debug/${workspaceFolderBasename}"
             ],
             "group": "test",
-            "label": "probe-rs run left",
-            "dependsOn": "cargo build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "new",
-                "showReuseMessage": false,
-                "clear": true
-            },
-            "isBackground": false,
-            "problemMatcher": []
-        },
-        {
-            "type": "shell",
-            "command": "probe-rs",
-            "args": [
-                "run",
-                "--chip",
-                "nRF52840_xxAA",
-                "target/thumbv7em-none-eabihf/debug/right"
-            ],
-            "group": "test",
-            "label": "probe-rs run right",
+            "label": "probe-rs run main",
             "dependsOn": "cargo build",
             "presentation": {
                 "echo": true,

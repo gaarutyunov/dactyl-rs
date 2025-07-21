@@ -4,9 +4,6 @@
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.features": [],
     "rust-analyzer.rustfmt.extraArgs": ["--edition", "2024"],
-    "rust-analyzer.server.extraEnv": {
-        "PATH": "/Users/garutyunov/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
-    },
     "rust-analyzer.checkOnSave": true,
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "rust-lang.rust-analyzer",

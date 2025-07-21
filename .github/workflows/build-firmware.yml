@@ -2,11 +2,6 @@ name: Build Firmware
 
 on:
   push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
-  release:
-    types: [ published ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -70,6 +65,5 @@ jobs:
       with:
         name: dactyl-firmware
         path: |
-          left.uf2
-          right.uf2
+          dactyl-rs.uf2
         retention-days: 30
