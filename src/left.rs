@@ -4,40 +4,75 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use dactyl_rs::{
-    keycodes::KeyCode,
-    layout::get_left_layout as get_default_layout,
-    matrix::Matrix,
-    usb::{UsbHandler, UsbKeyboard, UsbRequestHandler},
+    keycodes::KeyCode, layout::get_left_layout as get_default_layout, matrix::Matrix, run_ble_central, usb::{UsbHandler, UsbKeyboard, UsbRequestHandler}
 };
 use defmt::{info, unwrap};
 use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_futures::{
-    join::join4,
+    join::join5,
     select::{Either, select},
 };
 use embassy_nrf::{
-    bind_interrupts,
-    gpio::{Input, Level, Output, OutputDrive, Pull},
-    pac, peripherals, usb as nrf_usb,
+    bind_interrupts, gpio::{Input, Level, Output, OutputDrive, Pull}, pac, peripherals, rng, usb as nrf_usb
 };
+use embassy_nrf::{mode::Async, peripherals::RNG};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal,
 };
 use panic_probe as _;
+use static_cell::StaticCell;
+use trouble_host::{prelude::DefaultPacketPool, PacketPool};
 use usbd_hid::descriptor::SerializedDescriptor;
+use nrf_sdc::mpsl::MultiprotocolServiceLayer;
+use nrf_sdc::{self as sdc, mpsl};
 
 bind_interrupts!(struct Irqs {
     USBD => nrf_usb::InterruptHandler<peripherals::USBD>;
-    CLOCK_POWER => nrf_usb::vbus_detect::InterruptHandler;
+    CLOCK_POWER => nrf_usb::vbus_detect::InterruptHandler, nrf_sdc::mpsl::ClockInterruptHandler;
+    RNG => rng::InterruptHandler<RNG>;
+    EGU0_SWI0 => nrf_sdc::mpsl::LowPrioInterruptHandler;
+    RADIO => nrf_sdc::mpsl::HighPrioInterruptHandler;
+    TIMER0 => nrf_sdc::mpsl::HighPrioInterruptHandler;
+    RTC0 => nrf_sdc::mpsl::HighPrioInterruptHandler;
 });
+
+#[embassy_executor::task]
+async fn mpsl_task(mpsl: &'static MultiprotocolServiceLayer<'static>) -> ! {
+    mpsl.run().await
+}
+
+/// How many outgoing L2CAP buffers per link
+const L2CAP_TXQ: u8 = 3;
+
+/// How many incoming L2CAP buffers per link
+const L2CAP_RXQ: u8 = 3;
+
+fn build_sdc<'d, const N: usize>(
+    p: nrf_sdc::Peripherals<'d>,
+    rng: &'d mut rng::Rng<RNG, Async>,
+    mpsl: &'d MultiprotocolServiceLayer,
+    mem: &'d mut sdc::Mem<N>,
+) -> Result<nrf_sdc::SoftdeviceController<'d>, nrf_sdc::Error> {
+    sdc::Builder::new()?
+        .support_scan()?
+        .support_central()?
+        .central_count(1)?
+        .buffer_cfg(
+            DefaultPacketPool::MTU as u16,
+            DefaultPacketPool::MTU as u16,
+            L2CAP_TXQ,
+            L2CAP_RXQ,
+        )?
+        .build(p, rng, mpsl, mem)
+}
 
 static SUSPENDED: AtomicBool = AtomicBool::new(false);
 static USB_CONFIGURED: AtomicBool = AtomicBool::new(false);
 static KEY_CHANNEL: Channel<CriticalSectionRawMutex, KeyCode, 16> = Channel::new();
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     let p = embassy_nrf::init(Default::default());
 
     // Add early logging to test defmt
@@ -181,6 +216,28 @@ async fn main(_spawner: Spawner) {
     let out_fut = async {
         reader.run(false, &mut request_handler).await;
     };
+    
+    let mpsl_p = mpsl::Peripherals::new(p.RTC0, p.TIMER0, p.TEMP, p.PPI_CH19, p.PPI_CH30, p.PPI_CH31);
+    let lfclk_cfg = mpsl::raw::mpsl_clock_lfclk_cfg_t {
+        source: mpsl::raw::MPSL_CLOCK_LF_SRC_RC as u8,
+        rc_ctiv: mpsl::raw::MPSL_RECOMMENDED_RC_CTIV as u8,
+        rc_temp_ctiv: mpsl::raw::MPSL_RECOMMENDED_RC_TEMP_CTIV as u8,
+        accuracy_ppm: mpsl::raw::MPSL_DEFAULT_CLOCK_ACCURACY_PPM as u16,
+        skip_wait_lfclk_started: mpsl::raw::MPSL_DEFAULT_SKIP_WAIT_LFCLK_STARTED != 0,
+    };
+    static MPSL: StaticCell<MultiprotocolServiceLayer> = StaticCell::new();
+    let mpsl = MPSL.init(unwrap!(mpsl::MultiprotocolServiceLayer::new(mpsl_p, Irqs, lfclk_cfg)));
+    spawner.must_spawn(mpsl_task(&*mpsl));
 
-    join4(usb_fut, in_fut, keyboard_fut, out_fut).await;
+    let sdc_p = sdc::Peripherals::new(
+        p.PPI_CH17, p.PPI_CH18, p.PPI_CH20, p.PPI_CH21, p.PPI_CH22, p.PPI_CH23, p.PPI_CH24, p.PPI_CH25, p.PPI_CH26,
+        p.PPI_CH27, p.PPI_CH28, p.PPI_CH29,
+    );
+
+    let mut rng = rng::Rng::new(p.RNG, Irqs);
+
+    let mut sdc_mem = sdc::Mem::<4864>::new();
+    let sdc = unwrap!(build_sdc(sdc_p, &mut rng, mpsl, &mut sdc_mem));
+
+    join5(usb_fut, in_fut, keyboard_fut, out_fut, run_ble_central(sdc)).await;
 }

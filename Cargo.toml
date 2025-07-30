@@ -53,6 +53,7 @@ rand_chacha = { version = "0.3", default-features = false }
 usbd-hid = {version = "0.8.1", default-features = false, features = [
     "defmt",
 ] }
+trouble-host = { version = "0.2.4", features = ["derive", "scan", "defmt"] }
 
 [patch.crates-io]
 embassy-sync = { git = "https://github.com/embassy-rs/embassy.git", rev = "f35aa4005a63e8d478b2b95aaa2bfb316b72dece" }

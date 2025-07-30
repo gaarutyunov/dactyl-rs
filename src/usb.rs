@@ -46,12 +46,7 @@ impl<'d, D: embassy_usb::driver::Driver<'d>, const N: usize> UsbKeyboard<'d, D, 
         // This ensures the key doesn't get "stuck"
         embassy_time::Timer::after_millis(10).await;
 
-        let release_report = KeyboardReport {
-            keycodes: [0, 0, 0, 0, 0, 0],
-            leds: 0,
-            modifier: 0,
-            reserved: 0,
-        };
+        let release_report = KeyboardReport::default();
 
         match self.writer.write_serialize(&release_report).await {
             Ok(()) => {}
